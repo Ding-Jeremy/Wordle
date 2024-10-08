@@ -28,8 +28,8 @@ pygame.display.set_caption("WORDLE")
 # Create wordle
 wordle = Wordle("word_list.txt", screen)
 
+# Init worlde game
 wordle.init_game()
-
 
 while running:
     # Handle events (e.g., window close)
@@ -37,6 +37,19 @@ while running:
         if event.type == pygame.QUIT:
             running = False
 
+        # If a key is pressed
+        if event.type == pygame.KEYDOWN:
+            # Close the game if ESC is pressed
+            if event.key == pygame.K_ESCAPE:
+                running = False
+            elif event.key == pygame.K_BACKSPACE:
+                wordle.back_space()
+            elif event.key == pygame.K_RETURN:
+                wordle.check_word()
+
+            # play corresponding key if alphabetic
+            elif pygame.key.name(event.key).isalpha():
+                wordle.play(pygame.key.name(event.key).capitalize())
     wordle.show()
 
     # Update the display

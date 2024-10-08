@@ -18,31 +18,38 @@ class Wordle:
     screen:     screen object used to display the game
     """
 
-    C_SCREEN_DIMENSIONS = (600, 600)
+    C_SCREEN_DIMENSIONS = (800, 600)
     C_GRID_DIMENSIONS = (5, 6)
 
-    C_BACKGROUND_COLOR = (10, 10, 10)
+    C_BACKGROUND_COLOR = "#121213"
     C_LINE_COLOR = (50, 50, 50)
     C_LETTER_FONT_COLOR = (255, 255, 255)
 
     # Defines the offset in regards to the rectangle position, useful to
     # shift the letter position
-    C_LETTER_FONT_OFFSET = (15, 8)
+    C_LETTER_FONT_OFFSET = (15, 11)
     C_LETTER_SQR_SIZE = (60, 60)
 
-    C_LETTER_CORRECT_COLOR = (0, 255, 0)
-    C_LETTER_NEARLY_COLOR = (0, 0, 255)
-
+    C_LETTER_CORRECT_COLOR = "#538d4e"
+    C_LETTER_NEARLY_COLOR = "#b59f3b"
+    C_LETTER_PLAYED_COLOR = "#3a3a3c"
     # defines the dimensions of the letters display
     # it defines the surface on which the entire array
     # of letters is displayed
 
-    C_LETTER_DISPLAY_WIDTH = C_GRID_DIMENSIONS[0] * (C_LETTER_SQR_SIZE[0] + 2)
-    C_LETTER_DISPLAY_HEIGHT = C_GRID_DIMENSIONS[1] * (C_LETTER_SQR_SIZE[1] + 2)
+    C_LETTER_DISPLAY_WIDTH = C_GRID_DIMENSIONS[0] * (C_LETTER_SQR_SIZE[0] + 4)
+    C_LETTER_DISPLAY_HEIGHT = C_GRID_DIMENSIONS[1] * (C_LETTER_SQR_SIZE[1] + 4)
 
-    # Defines its dimensions
+    # Defines its positions
     C_LETTER_DISPLAY_X = C_SCREEN_DIMENSIONS[0] / 2 - C_LETTER_DISPLAY_WIDTH / 2
     C_LETTER_DISPLAY_Y = 50
+
+    # Keyboard constants
+    C_KEYBOARD_DISPLAY_WIDTH = C_SCREEN_DIMENSIONS[0] / 2
+    C_KEYBOARD_DISPLAY_HEIGHT = 150
+
+    C_KEYBOARD_DISPLAY_X = C_SCREEN_DIMENSIONS[0] / 2 - C_KEYBOARD_DISPLAY_WIDTH / 2
+    C_KEYBOARD_DISPLAY_Y = 440
 
     def __init__(self, file_name, screen):
         # Txt file that contains all words
@@ -54,6 +61,10 @@ class Wordle:
         # Word to be guessed
         self.correct_word = None
 
+        # Cursors that helps keep track of current
+        # letter position
+        self.cursor_letter = 0
+        self.cursor_line = 0
         self.screen = screen
         self.pygame = pygame
 
@@ -63,6 +74,9 @@ class Wordle:
         self.letter_font = pygame.font.SysFont(
             "Neue Helvetica 75 Bold", Wordle.C_LETTER_SQR_SIZE[0]
         )
+
+        # Create a virtual keyboard
+        self.keyboard = Keyboard_panel(self)
 
     def read_file(self):
         """Read file a save the word list"""
@@ -112,6 +126,144 @@ class Wordle:
 
         return True
 
+    def play(self, letter):
+        """
+        Tries playing a letter
+        Arguments:
+        letter: [char] letter to play
+        """
+        # Check that not the end of the line
+        if self.cursor_letter == Wordle.C_GRID_DIMENSIONS[0]:
+            return
+        # Check if letter is too big
+        if len(letter) != 1:
+            return
+        # Check that it is a valid letter
+        self.grid[
+            self.cursor_line * Wordle.C_GRID_DIMENSIONS[0] + self.cursor_letter
+        ].letter = letter
+        # Increment cursor
+        self.cursor_letter += 1
+
+    def back_space(self):
+        """Executes a backspace, remove last entered
+        char and moves the cursor back"""
+        # Come back one step
+        self.cursor_letter -= 1
+        if self.cursor_letter < 0:
+            self.cursor_letter = 0
+            return
+        self.get_current_grid_elem().letter = ""
+
+    def check_word(self):
+        """Called to check the current line"""
+        number_corrects = 0
+
+        # If current line is not full (cursor)
+        if self.cursor_letter < Wordle.C_GRID_DIMENSIONS[0]:
+            return False
+
+        # Read current word
+        typed_word = self.get_current_word()
+
+        # Check if the word exists
+        try:
+            self.words.index(typed_word)
+        except:
+            return False
+
+        print(self.correct_word)
+        # Check every letter
+        # Cursor start
+        c_strt = self.cursor_line * Wordle.C_GRID_DIMENSIONS[0]
+
+        # Get hints
+        hints = self.generate_hints(typed_word)
+
+        for i in range(Wordle.C_GRID_DIMENSIONS[0]):
+            value = hints[i]
+            if value == "CORRECT":
+                self.grid[c_strt + i].color = Wordle.C_LETTER_CORRECT_COLOR
+            elif value == "PLACEMENT":
+                self.grid[c_strt + i].color = Wordle.C_LETTER_NEARLY_COLOR
+            else:
+                self.grid[c_strt + i].color = Wordle.C_LETTER_PLAYED_COLOR
+        # Go to the next line
+        self.cursor_line += 1
+        self.cursor_letter = 0
+
+    def get_current_word(self):
+        """Get the current typed word."""
+        word = ""
+        # Get the start char position
+        start_c = self.cursor_line * Wordle.C_GRID_DIMENSIONS[0]
+        # Goes though the grid
+        for i in range(start_c, start_c + Wordle.C_GRID_DIMENSIONS[0]):
+            word += self.grid[i].letter
+        # Add cariage return
+        word += "\n"
+        return word
+
+    def get_current_grid_elem(self):
+        """Get the current grid element from the cursors"""
+        return self.grid[
+            self.cursor_line * Wordle.C_GRID_DIMENSIONS[0] + self.cursor_letter
+        ]
+        """Check a letter in the grid. Compares it to the hidden word
+        Returns:
+        \"CORRECT\": Correct placement and letter
+        \"PLACEMENT\": Correct letter wrong placement
+        \"NONE\":   Not present in the word
+        """
+        # Get grid index
+        index = cursor_line * Wordle.C_GRID_DIMENSIONS[0] + cursor_letter
+
+        # Get the letter
+        letter = self.grid[index].letter
+
+        # Goes through hidden word
+        # Check if the letter is correctly placed
+        if letter == self.correct_word[cursor_letter]:
+            return "CORRECT"
+        # Check if letter present
+        try:
+            self.correct_word.index(letter)
+            return "PLACEMENT"
+        except:
+
+            return "NONE"
+
+    def generate_hints(self, word_to_check):
+        """Returns an array of colors correponding to hints"""
+        guess_word = word_to_check
+        secret_word = self.correct_word
+        width = Wordle.C_GRID_DIMENSIONS[0]
+
+        feedback = ["NONE"] * width  # Initialize all to gray
+        # Track indices of secret_word that have been matched for green
+        used_indices = []
+
+        # Step 1: First pass to mark 'green' feedback
+        for i in range(width):
+            if guess_word[i] == secret_word[i]:
+                feedback[i] = "CORRECT"
+                used_indices.append(i)  # Mark this index as used for a green match
+
+        # Step 2: Second pass to mark 'yellow' feedback
+        for i in range(width):
+            # Skip greens, we're only checking for yellows now
+            if feedback[i] != "CORRECT":
+                if guess_word[i] in secret_word:
+                    for j in range(width):
+                        # Check if the letter exists in secret_word at another position
+                        # Ensure we are not placing a yellow for positions already marked green
+                        if guess_word[i] == secret_word[j] and j not in used_indices:
+                            feedback[i] = "PLACEMENT"
+                            used_indices.append(j)
+                            break  # Exit loop once we find the first valid yellow match
+
+        return feedback
+
     def show(self):
         """Displays the game to the screen"""
         # Background
@@ -120,6 +272,9 @@ class Wordle:
         # Letters
         for letter in self.grid:
             letter.show()
+
+        # Keyboard
+        self.keyboard.show()
 
 
 class Letter_case:
@@ -140,8 +295,7 @@ class Letter_case:
         # Save useful drawing attributs
         self.screen = wordle.screen
         self.wordle = wordle
-
-        self.letter = random.choice("ABCDEFGHIJKLMNOPQRSTUV")
+        self.letter = ""
 
     def show(self):
         """Shows the square"""
@@ -164,3 +318,52 @@ class Letter_case:
             self.letter, True, Wordle.C_LETTER_FONT_COLOR
         )
         self.screen.blit(txt, (pos_x, pos_y))
+
+
+class Keyboard_panel:
+    """
+    Defines a panel that represents a keyboard.
+    Used to show the user the keys that he has already used
+
+    Attributs:
+    wordle:[Wordle] Wordle game object
+    """
+
+    def __init__(self, wordle):
+        self.screen = wordle.screen
+        # List of rows
+        self.top_row = "QWERTZUIOP"
+        self.middle_row = "ASDFGHJKL"
+        self.bottom_row = "YXCVBNM"
+
+        pass
+
+    def set_letter_state(self, letter, state):
+        """
+        Set the letter state
+        Arguments:
+        letter: [A - Z]
+        state: "CORRECT", "PLACEMENT", "NONE"
+        """
+
+    def show(self):
+        """Displays the keyboard"""
+        # Defines the rectangle object
+        rectangle = pygame.rect.Rect(
+            Wordle.C_KEYBOARD_DISPLAY_X,
+            Wordle.C_KEYBOARD_DISPLAY_Y,
+            Wordle.C_KEYBOARD_DISPLAY_WIDTH,
+            Wordle.C_KEYBOARD_DISPLAY_HEIGHT,
+        )
+        # Draws a rect
+        pygame.draw.rect(self.screen, Wordle.C_LINE_COLOR, rectangle, 3)
+
+        # Draws first row
+        # Calculate width and height from each letters
+        row_height = Wordle.C_KEYBOARD_DISPLAY_WIDTH / 3
+        top_row_width = Wordle.C_KEYBOARD_DISPLAY_WIDTH / 10
+        middle_row_width = Wordle.C_KEYBOARD_DISPLAY_WIDTH / 9
+        bottom_row_width = Wordle.C_KEYBOARD_DISPLAY_WIDTH / 7
+
+        """for i in range(10):
+            rect = pygame.rect.Rect()"""
