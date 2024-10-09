@@ -4,9 +4,14 @@
 #
 # description:  See read me for rules
 #
+import os
+
+os.environ["PYGAME_HIDE_SUPPORT_PROMPT"] = "hide"
+
 import random
 import pygame
 from pygame import gfxdraw
+from math import *
 
 
 class Wordle:
@@ -18,7 +23,7 @@ class Wordle:
     screen:     screen object used to display the game
     """
 
-    C_SCREEN_DIMENSIONS = (800, 600)
+    C_SCREEN_DIMENSIONS = (650, 650)
     C_GRID_DIMENSIONS = (5, 6)
 
     # Defines the offset in regards to the rectangle position, useful to
@@ -31,6 +36,7 @@ class Wordle:
     C_LETTER_CORRECT_COLOR = "#538d4e"
     C_LETTER_NEARLY_COLOR = "#b59f3b"
     C_LETTER_PLAYED_COLOR = "#3a3a3c"
+    C_LETTER_UNPLAYED_COLOR = "#818384"
     C_LINE_COLOR = (50, 50, 50)
     C_LETTER_FONT_COLOR = (255, 255, 255)
 
@@ -46,14 +52,23 @@ class Wordle:
     C_LETTER_DISPLAY_Y = 50
 
     # Keyboard constants
-    C_KEYBOARD_DISPLAY_WIDTH = C_SCREEN_DIMENSIONS[0] / 2
-    C_KEYBOARD_DISPLAY_HEIGHT = 150
+    C_KEYBOARD_DISPLAY_WIDTH = 500
 
     C_KEYBOARD_DISPLAY_X = C_SCREEN_DIMENSIONS[0] / 2 - C_KEYBOARD_DISPLAY_WIDTH / 2
-    C_KEYBOARD_DISPLAY_Y = 440
+    C_KEYBOARD_DISPLAY_Y = 475
 
+    C_KEYBOARD_CASE_DIMENSIONS = (50, 50)
+    # X and Y spacing between boxes
+    C_KEYBOARD_CASE_SPACING = (5, 5)
     C_KEYBOARD_LETTER_SIZE = 40
     C_KEYBOARD_LETTER_OFFSET = (10, 5)
+
+    # Animations
+    C_ANIM_TYPED_LETTER_RANGE = 3
+    C_ANIM_TYPE_LETTER_TICK = 0.02
+
+    # Texts
+    C_END_TEXT_SIZE = 30
 
     def __init__(self, file_name, screen):
         # Txt file that contains all words
@@ -89,6 +104,9 @@ class Wordle:
         self.played_letters_none = ""
         self.played_letters_placement = ""
         self.played_letters_correct = ""
+
+        # Main flag
+        self.playing = True
 
     def read_file(self):
         """Read file a save the word list"""
@@ -150,7 +168,11 @@ class Wordle:
         # Check if letter is too big
         if len(letter) != 1:
             return
-        # Check that it is a valid letter
+        # Check it is a valid position
+        if self.cursor_line == Wordle.C_GRID_DIMENSIONS[1]:
+            self.playing = False
+            return
+
         self.grid[
             self.cursor_line * Wordle.C_GRID_DIMENSIONS[0] + self.cursor_letter
         ].letter = letter
@@ -170,7 +192,6 @@ class Wordle:
     def check_word(self):
         """Called to check the current line"""
         number_corrects = 0
-
         # If current line is not full (cursor)
         if self.cursor_letter < Wordle.C_GRID_DIMENSIONS[0]:
             return False
@@ -184,7 +205,6 @@ class Wordle:
         except:
             return False
 
-        print(self.correct_word)
         # Check every letter
         # Cursor start
         c_strt = self.cursor_line * Wordle.C_GRID_DIMENSIONS[0]
@@ -292,6 +312,23 @@ class Wordle:
         # Keyboard
         self.keyboard.show()
 
+        # If finished then show end screen
+        if not self.playing:
+            self.show_end()
+            return
+
+    def show_end(self):
+        """Shows the end frame, displays the word on screen, blur the background"""
+        end_test = pygame.font.SysFont("Neue Helvetica 75 Bold", Wordle.C_END_TEXT_SIZE)
+        txt = end_test.render(
+            "The word was: " + self.correct_word, True, Wordle.C_LETTER_FONT_COLOR
+        )
+        pos_x = Wordle.C_SCREEN_DIMENSIONS[0] / 2 - 100
+        pos_y = Wordle.C_KEYBOARD_DISPLAY_Y - 30
+        self.screen.blit(txt, (pos_x, pos_y))
+
+        pass
+
 
 class Letter_case:
     """
@@ -313,14 +350,29 @@ class Letter_case:
         self.wordle = wordle
         self.letter = ""
 
+        # Animation related, if a letter is entered, makes the square "vibrate"
+        self.animation_counter = 0
+        self.last_letter = ""
+
     def show(self):
         """Shows the square"""
+        # Check if animated
+        if self.letter != self.last_letter and self.animation_counter < 2 * pi:
+            self.animation_counter += Wordle.C_ANIM_TYPE_LETTER_TICK
+        else:
+            self.animation_counter = 0
+            self.last_letter = self.letter
+
+        animation_offset = Wordle.C_ANIM_TYPED_LETTER_RANGE * sin(
+            self.animation_counter
+        )
+
         # Defines the rectangle object
         rectangle = pygame.rect.Rect(
-            self.position[0],
-            self.position[1],
-            Wordle.C_LETTER_SQR_SIZE[0],
-            Wordle.C_LETTER_SQR_SIZE[1],
+            self.position[0] - animation_offset,
+            self.position[1] - animation_offset,
+            Wordle.C_LETTER_SQR_SIZE[0] + 2 * animation_offset,
+            Wordle.C_LETTER_SQR_SIZE[1] + 2 * animation_offset,
         )
         # Draws inner rectangle
         pygame.draw.rect(self.screen, self.color, rectangle)
@@ -371,33 +423,33 @@ class Keyboard_panel:
 
     def show(self):
         """Displays the keyboard"""
-        # Defines the rectangle object
-        rectangle = pygame.rect.Rect(
-            Wordle.C_KEYBOARD_DISPLAY_X,
-            Wordle.C_KEYBOARD_DISPLAY_Y,
-            Wordle.C_KEYBOARD_DISPLAY_WIDTH,
-            Wordle.C_KEYBOARD_DISPLAY_HEIGHT,
-        )
-        # Draws a rect
-        pygame.draw.rect(self.screen, Wordle.C_LINE_COLOR, rectangle, 3)
-
         # Draws first row
         # Calculate width and height from each letters
         start_row_y = Wordle.C_KEYBOARD_DISPLAY_Y
-        start_row_x = Wordle.C_KEYBOARD_DISPLAY_X
-        row_height = Wordle.C_KEYBOARD_DISPLAY_HEIGHT / 3
+
+        case_width = Wordle.C_KEYBOARD_CASE_DIMENSIONS[0]
+        case_height = Wordle.C_KEYBOARD_CASE_DIMENSIONS[1]
+        spacing_x = Wordle.C_KEYBOARD_CASE_SPACING[0]
+        spacing_y = Wordle.C_KEYBOARD_CASE_SPACING[1]
 
         # Draws keyboard lines
         for i in range(3):
             for j in range(len(self.rows[i])):
-                row_width = Wordle.C_KEYBOARD_DISPLAY_WIDTH / len(self.rows[i])
+                # Compute all positions and dimensions
+                # Compute center position
+                center_x = Wordle.C_SCREEN_DIMENSIONS[0] / 2
+                # Compute letter row width
+                row_width = len(self.rows[i]) * (case_width + spacing_x)
+                # Compute starting x
+                start_row_x = center_x - row_width / 2
+
                 # Compute dimensions
-                x = start_row_x + j * row_width
-                y = start_row_y + i * row_height
+                x = start_row_x + j * (case_width + spacing_x)
+                y = start_row_y + i * (case_height + spacing_y)
                 letter = self.rows[i][j]
 
                 # Draws the rectangles
-                rect = pygame.rect.Rect(x, y, row_width, row_height)
+                rect = pygame.rect.Rect(x, y, case_width, case_height)
 
                 # Defines color by letter status
                 if letter in self.wordle.played_letters_correct:
@@ -407,13 +459,15 @@ class Keyboard_panel:
                 elif letter in self.wordle.played_letters_none:
                     color = Wordle.C_LETTER_PLAYED_COLOR
                 else:
-                    color = Wordle.C_BACKGROUND_COLOR
+                    color = Wordle.C_LETTER_UNPLAYED_COLOR
 
                 # Draws rectangle
-                pygame.draw.rect(self.screen, color, rect)
+                pygame.draw.rect(self.screen, color, rect, border_radius=7)
 
                 # Draws edges
-                pygame.draw.rect(self.screen, Wordle.C_LINE_COLOR, rect, 1)
+                pygame.draw.rect(
+                    self.screen, Wordle.C_LINE_COLOR, rect, 3, border_radius=7
+                )
 
                 # Writes letter
                 txt = self.wordle.kbrd_letter_font.render(

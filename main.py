@@ -6,8 +6,10 @@
 #
 
 from wordle import Wordle
-import pygame, sys
-from pygame import gfxdraw
+import os, sys
+
+os.environ["PYGAME_HIDE_SUPPORT_PROMPT"] = "hide"
+import pygame
 
 # Main game loop
 running = True
@@ -15,7 +17,7 @@ running = True
 # Initialize pygame
 pygame.init()
 pygame.font.init()
-
+pygame.display.set_icon(pygame.image.load("assets/thumbnail.png"))
 # Set up the window dimensions
 window_width = Wordle.C_SCREEN_DIMENSIONS[0]
 window_height = Wordle.C_SCREEN_DIMENSIONS[1]
@@ -26,11 +28,10 @@ screen = pygame.display.set_mode(window_size)
 pygame.display.set_caption("WORDLE")
 
 # Create wordle
-wordle = Wordle("word_list.txt", screen)
+wordle = Wordle("words/word_list.txt", screen)
 
 # Init worlde game
 wordle.init_game()
-
 
 while running:
     # Handle events (e.g., window close)
