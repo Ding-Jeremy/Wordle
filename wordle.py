@@ -21,18 +21,19 @@ class Wordle:
     C_SCREEN_DIMENSIONS = (800, 600)
     C_GRID_DIMENSIONS = (5, 6)
 
-    C_BACKGROUND_COLOR = "#121213"
-    C_LINE_COLOR = (50, 50, 50)
-    C_LETTER_FONT_COLOR = (255, 255, 255)
-
     # Defines the offset in regards to the rectangle position, useful to
     # shift the letter position
     C_LETTER_FONT_OFFSET = (15, 11)
     C_LETTER_SQR_SIZE = (60, 60)
 
+    # Game colors
+    C_BACKGROUND_COLOR = "#121213"
     C_LETTER_CORRECT_COLOR = "#538d4e"
     C_LETTER_NEARLY_COLOR = "#b59f3b"
     C_LETTER_PLAYED_COLOR = "#3a3a3c"
+    C_LINE_COLOR = (50, 50, 50)
+    C_LETTER_FONT_COLOR = (255, 255, 255)
+
     # defines the dimensions of the letters display
     # it defines the surface on which the entire array
     # of letters is displayed
@@ -50,6 +51,9 @@ class Wordle:
 
     C_KEYBOARD_DISPLAY_X = C_SCREEN_DIMENSIONS[0] / 2 - C_KEYBOARD_DISPLAY_WIDTH / 2
     C_KEYBOARD_DISPLAY_Y = 440
+
+    C_KEYBOARD_LETTER_SIZE = 40
+    C_KEYBOARD_LETTER_OFFSET = (10, 5)
 
     def __init__(self, file_name, screen):
         # Txt file that contains all words
@@ -74,9 +78,17 @@ class Wordle:
         self.letter_font = pygame.font.SysFont(
             "Neue Helvetica 75 Bold", Wordle.C_LETTER_SQR_SIZE[0]
         )
+        self.kbrd_letter_font = pygame.font.SysFont(
+            "Neue Helvetica 75 Bold", Wordle.C_KEYBOARD_LETTER_SIZE
+        )
 
         # Create a virtual keyboard
         self.keyboard = Keyboard_panel(self)
+
+        # Keep track of played letters and their status
+        self.played_letters_none = ""
+        self.played_letters_placement = ""
+        self.played_letters_correct = ""
 
     def read_file(self):
         """Read file a save the word list"""
@@ -180,13 +192,17 @@ class Wordle:
         # Get hints
         hints = self.generate_hints(typed_word)
 
+        # Sets hints colors & push letters into the arrays
         for i in range(Wordle.C_GRID_DIMENSIONS[0]):
             value = hints[i]
             if value == "CORRECT":
+                self.played_letters_correct += self.grid[c_strt + i].letter
                 self.grid[c_strt + i].color = Wordle.C_LETTER_CORRECT_COLOR
             elif value == "PLACEMENT":
+                self.played_letters_placement += self.grid[c_strt + i].letter
                 self.grid[c_strt + i].color = Wordle.C_LETTER_NEARLY_COLOR
             else:
+                self.played_letters_none += self.grid[c_strt + i].letter
                 self.grid[c_strt + i].color = Wordle.C_LETTER_PLAYED_COLOR
         # Go to the next line
         self.cursor_line += 1
@@ -336,6 +352,13 @@ class Keyboard_panel:
         self.middle_row = "ASDFGHJKL"
         self.bottom_row = "YXCVBNM"
 
+        self.rows = []
+        self.rows.append(self.top_row)
+        self.rows.append(self.middle_row)
+        self.rows.append(self.bottom_row)
+
+        self.wordle = wordle
+
         pass
 
     def set_letter_state(self, letter, state):
@@ -360,10 +383,47 @@ class Keyboard_panel:
 
         # Draws first row
         # Calculate width and height from each letters
-        row_height = Wordle.C_KEYBOARD_DISPLAY_WIDTH / 3
-        top_row_width = Wordle.C_KEYBOARD_DISPLAY_WIDTH / 10
-        middle_row_width = Wordle.C_KEYBOARD_DISPLAY_WIDTH / 9
-        bottom_row_width = Wordle.C_KEYBOARD_DISPLAY_WIDTH / 7
+        start_row_y = Wordle.C_KEYBOARD_DISPLAY_Y
+        start_row_x = Wordle.C_KEYBOARD_DISPLAY_X
+        row_height = Wordle.C_KEYBOARD_DISPLAY_HEIGHT / 3
 
-        """for i in range(10):
-            rect = pygame.rect.Rect()"""
+        # Draws keyboard lines
+        for i in range(3):
+            for j in range(len(self.rows[i])):
+                row_width = Wordle.C_KEYBOARD_DISPLAY_WIDTH / len(self.rows[i])
+                # Compute dimensions
+                x = start_row_x + j * row_width
+                y = start_row_y + i * row_height
+                letter = self.rows[i][j]
+
+                # Draws the rectangles
+                rect = pygame.rect.Rect(x, y, row_width, row_height)
+
+                # Defines color by letter status
+                if letter in self.wordle.played_letters_correct:
+                    color = Wordle.C_LETTER_CORRECT_COLOR
+                elif letter in self.wordle.played_letters_placement:
+                    color = Wordle.C_LETTER_NEARLY_COLOR
+                elif letter in self.wordle.played_letters_none:
+                    color = Wordle.C_LETTER_PLAYED_COLOR
+                else:
+                    color = Wordle.C_BACKGROUND_COLOR
+
+                # Draws rectangle
+                pygame.draw.rect(self.screen, color, rect)
+
+                # Draws edges
+                pygame.draw.rect(self.screen, Wordle.C_LINE_COLOR, rect, 1)
+
+                # Writes letter
+                txt = self.wordle.kbrd_letter_font.render(
+                    self.rows[i][j], True, Wordle.C_LETTER_FONT_COLOR
+                )
+                # Draws letter with offset
+                self.screen.blit(
+                    txt,
+                    (
+                        x + Wordle.C_KEYBOARD_LETTER_OFFSET[0],
+                        y + Wordle.C_KEYBOARD_LETTER_OFFSET[1],
+                    ),
+                )

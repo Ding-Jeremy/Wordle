@@ -31,6 +31,7 @@ wordle = Wordle("word_list.txt", screen)
 # Init worlde game
 wordle.init_game()
 
+
 while running:
     # Handle events (e.g., window close)
     for event in pygame.event.get():
