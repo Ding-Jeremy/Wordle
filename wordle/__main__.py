@@ -28,7 +28,7 @@ screen = pygame.display.set_mode(window_size)
 pygame.display.set_caption("WORDLE")
 
 # Create wordle
-wordle = Wordle("wordle/words/word_list.txt", screen)
+wordle = Wordle("wordle/words/answers.txt", "wordle/words/guesses.txt", screen)
 
 # Init worlde game
 wordle.init_game()
@@ -58,6 +58,8 @@ while running:
     pygame.display.flip()
 
 # Clean up and quit pygame
-wordle.file.close()
+wordle.file_answers.close()
+wordle.file_guesses.close()
+
 pygame.quit()
 sys.exit()

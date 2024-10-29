@@ -70,13 +70,17 @@ class Wordle:
     # Texts
     C_END_TEXT_SIZE = 30
 
-    def __init__(self, file_name, screen):
+    def __init__(self, file_answers, file_guesses, screen):
         # Txt file that contains all words
-        self.file_name = file_name
-        self.file = None
+        self.file_guesses_name = file_guesses
+        self.file_answers_name = file_answers
+        self.file_guesses = None
+        self.file_answers = None
 
-        # Defines the word list
-        self.words = []
+        # Defines the guesses list
+        self.guess_words = []
+        self.answer_words = []
+
         # Word to be guessed
         self.correct_word = None
 
@@ -108,17 +112,24 @@ class Wordle:
         # Main flag
         self.playing = True
 
-    def read_file(self):
-        """Read file a save the word list"""
-        self.words = self.file.readlines()
+    def read_files(self):
+        """Read files a save the word list"""
+        self.guess_words = self.file_guesses.readlines()
+        self.answer_words = self.file_answers.readlines()
 
-    def open_file(self):
-        """Opens the file, return true or false"""
-        self.file = open(self.file_name)
+    def open_files(self):
+        """Opens the files, return true or false"""
+        self.file_guesses = open(self.file_guesses_name)
+        self.file_answers = open(self.file_answers_name)
 
-        if self.file is None:
-            return False
-        return True
+    def format_file(self, file_name):
+        """Format a file (turn all words into capital)"""
+        with open(file_name, "r") as f:
+            words = f.readlines()
+            for i in range(len(words)):
+                words[i] = words[i].upper()
+        with open(file_name, "w") as f:
+            f.writelines(words)
 
     def generate_grid(self):
         """Generate all objects related to the grid"""
@@ -141,18 +152,16 @@ class Wordle:
     def init_game(self):
         """Initialize the game, opens text file, creates objects etc"""
         # Tries opening the file
-        if self.open_file() is False:
-            print("Impossible to load file: " + self.file_name)
-            return False
+        self.open_files()
 
         # Reads the words file
-        self.read_file()
+        self.read_files()
 
         # Generate a grid
         self.generate_grid()
 
         # Pick a random word
-        self.correct_word = random.choice(self.words)
+        self.correct_word = random.choice(self.answer_words)
 
         return True
 
@@ -200,9 +209,7 @@ class Wordle:
         typed_word = self.get_current_word()
 
         # Check if the word exists
-        try:
-            self.words.index(typed_word)
-        except:
+        if typed_word not in self.guess_words:
             return False
 
         # Check every letter
