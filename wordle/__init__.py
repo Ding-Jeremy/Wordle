@@ -117,6 +117,14 @@ class Wordle:
         self.guess_words = self.file_guesses.readlines()
         self.answer_words = self.file_answers.readlines()
 
+    def remove_crlf(self):
+        """Remove \n at the end"""
+        for i in range(len(self.guess_words)):
+            self.guess_words[i] = self.guess_words[i].strip()
+
+        for i in range(len(self.answer_words)):
+            self.answer_words[i] = self.answer_words[i].strip()
+
     def open_files(self):
         """Opens the files, return true or false"""
         self.file_guesses = open(self.file_guesses_name)
@@ -157,6 +165,7 @@ class Wordle:
         # Reads the words file
         self.read_files()
 
+        self.remove_crlf()
         # Generate a grid
         self.generate_grid()
 
