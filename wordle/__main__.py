@@ -5,8 +5,8 @@
 # description:  See read me for rules
 #
 
-from wordle import Wordle
 import os, sys
+from . import Wordle
 
 os.environ["PYGAME_HIDE_SUPPORT_PROMPT"] = "hide"
 import pygame
@@ -28,7 +28,7 @@ screen = pygame.display.set_mode(window_size)
 pygame.display.set_caption("WORDLE")
 
 # Create wordle
-wordle = Wordle("words/word_list.txt", screen)
+wordle = Wordle("wordle/words/word_list.txt", screen)
 
 # Init worlde game
 wordle.init_game()

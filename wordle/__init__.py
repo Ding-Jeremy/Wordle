@@ -1,4 +1,4 @@
-# name:         wordle.py
+# name:         __init__.py
 # author:       Ding Jérémy
 # date:         08.10.2024
 #
@@ -323,6 +323,8 @@ class Wordle:
         txt = end_test.render(
             "The word was: " + self.correct_word, True, Wordle.C_LETTER_FONT_COLOR
         )
+
+        # Calculate position for end text
         pos_x = Wordle.C_SCREEN_DIMENSIONS[0] / 2 - 100
         pos_y = Wordle.C_KEYBOARD_DISPLAY_Y - 30
         self.screen.blit(txt, (pos_x, pos_y))
