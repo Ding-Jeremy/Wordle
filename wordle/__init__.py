@@ -252,8 +252,6 @@ class Wordle:
         # Goes though the grid
         for i in range(start_c, start_c + Wordle.C_GRID_DIMENSIONS[0]):
             word += self.grid[i].letter
-        # Add cariage return
-        word += "\n"
         return word
 
     def get_current_grid_elem(self):

@@ -33,7 +33,6 @@ wordle = Wordle("wordle/words/answers.txt", "wordle/words/guesses.txt", screen)
 # Init worlde game
 wordle.init_game()
 
-print(wordle.answer_words)
 while running:
     # Handle events (e.g., window close)
     for event in pygame.event.get():
