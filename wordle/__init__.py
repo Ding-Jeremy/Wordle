@@ -12,6 +12,7 @@ import random
 import pygame
 from pygame import gfxdraw
 from math import *
+from collections import defaultdict
 
 
 class Wordle:
@@ -313,6 +314,63 @@ class Wordle:
                             break  # Exit loop once we find the first valid yellow match
 
         return feedback
+
+    def get_letters_avg(self):
+        """Returns dictonnary containing letters with a factor (0 - 1)
+        That shows distributivity"""
+        avg = defaultdict(float)
+        total_nb_letters = 0
+
+        # Goes through answers word list
+        for word in self.answer_words:
+            for letter in word:
+                avg[letter] += 1
+                total_nb_letters += 1
+
+        # Divide by total nb_letters
+        for letter in "ABCDEFGHIJKLMNOPQRSTUVWXYZ":
+            avg[letter] /= total_nb_letters
+        return avg
+
+    def get_word_score(self, word, letters_avg):
+        """Get a word score based on the given letters_avg"""
+        score = 0
+        letters = ""
+        for letter in word:
+            if letter not in letters:
+                letters += letter
+                score += letters_avg[letter]
+        return score
+
+    def get_ranked_words(self, letters_avg):
+        """Return an array with words in order (best to worst)"""
+        scores = []
+        for word in self.guess_words:
+            scores.append([word, self.get_word_score(word, letters_avg)])
+
+        # Sorting function
+        def sorter(a):
+            return -a[1]
+
+        scores.sort(key=sorter)
+        return scores
+
+    def get_best_words(self, ranked_words):
+        """Get best words to try in order (all differnent letters)"""
+        best_words = []
+        best_words.append(ranked_words[0])
+        index = 0
+        better = True
+        for word in ranked_words:
+            better = True
+            for letter in word[0]:
+                if letter in best_words[index][0]:
+                    better = False
+            if better:
+                index += 1
+                best_words.append(word)
+
+        return best_words
 
     def show(self):
         """Displays the game to the screen"""
